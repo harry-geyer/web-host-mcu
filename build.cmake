@@ -24,6 +24,7 @@ add_compile_options(-Wall
 
 add_executable(firmware
     ${CMAKE_CURRENT_LIST_DIR}/src/main.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/dhcp_server.c
 )
 
 target_link_libraries(firmware
