@@ -9,6 +9,7 @@
 #include "lwip/tcp.h"
 
 #include "dhcp_server.h"
+#include "http_server.h"
 
 
 #define WHM_AP_SSID             "Web-Host MCU"
@@ -47,7 +48,15 @@ int main(int argc, char **argv)
     ret = whm_dhcp_server_init(&dhcp_server);
     if (ret)
     {
-        printf("Failed to initialise access point\n");
+        printf("Failed to initialise dhcp server\n");
+        return ret;
+    }
+
+    whm_http_server_t http_server;
+    ret = whm_http_server_init(&http_server);
+    if (ret)
+    {
+        printf("Failed to initialise tcp server\n");
         return ret;
     }
 
@@ -62,6 +71,9 @@ int main(int argc, char **argv)
         gpio_toggle = (gpio_toggle + 1) % 2;
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, gpio_toggle);
     }
+
+    whm_http_server_deinit(&http_server);
+    whm_dhcp_server_deinit(&dhcp_server);
     return 0;
 }
 

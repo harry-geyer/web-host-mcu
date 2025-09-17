@@ -22,21 +22,60 @@ add_compile_options(-Wall
     -Wno-format-nonliteral
 )
 
-add_executable(firmware
+add_executable(application
     ${CMAKE_CURRENT_LIST_DIR}/src/main.c
     ${CMAKE_CURRENT_LIST_DIR}/src/dhcp_server.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/http_server.c
 )
 
-target_link_libraries(firmware
+target_link_libraries(application
     pico_stdlib
+    pico_lwip_http
+    pico_httpd_webroot
+    pico_cyw43_arch_lwip_poll
 )
 
-if (PICO_CYW43_SUPPORTED)
-    target_link_libraries(firmware pico_cyw43_arch_lwip_poll)
-endif()
+pico_add_library(pico_httpd_webroot NOFLAG)
+pico_set_lwip_httpd_content(pico_httpd_webroot INTERFACE
+    ${CMAKE_CURRENT_LIST_DIR}/webroot/index.html
+)
 
-pico_add_extra_outputs(firmware)
-pico_enable_stdio_usb(firmware 1)
+set_target_properties(application
+    PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/application.ld
+)
+
+pico_add_extra_outputs(application)
+pico_enable_stdio_usb(application 1)
+
+IF (NOT DEFINED CONFIG_DIR)
+    set(CONFIG_DIR ${CMAKE_CURRENT_LIST_DIR}/include/config)
+ENDIF ()
+
+target_include_directories(application PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/src/internal
+    ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CONFIG_DIR}
+)
+
+add_executable(bootloader
+    ${CMAKE_CURRENT_LIST_DIR}/bootloader/src/main.c
+)
+
+target_link_libraries(bootloader
+    pico_stdlib
+    hardware_flash
+)
+
+set_target_properties(bootloader
+    PROPERTIES PICO_TARGET_LINKER_SCRIPT ${CMAKE_CURRENT_LIST_DIR}/bootloader/bootloader.ld
+)
+
+target_include_directories(bootloader PUBLIC
+    ${CMAKE_CURRENT_LIST_DIR}/bootloader/include
+    ${CONFIG_DIR}
+)
+
+pico_add_extra_outputs(bootloader)
 
 execute_process(
     COMMAND
@@ -62,25 +101,31 @@ add_compile_definitions(FIRMWARE_NAME="${CMAKE_PROJECT_NAME}"
     FIRMWARE_VERSION="${GIT_TAG}"
     FIRMWARE_SHA1=${GIT_SHA1})
 
-IF (NOT DEFINED CONFIG_DIR)
-    set(CONFIG_DIR ${CMAKE_CURRENT_LIST_DIR}/include/config)
-ENDIF ()
+add_custom_target(firmware ALL
+    COMMAND
+        ${BASH}
+        dd if=bootloader.bin of=firmware.bin bs=256 &&
+        dd if=application.bin of=firmware.bin bs=256 seek=160 &&
+        chmod +x firmware.bin &&
+        picotool uf2 convert firmware.bin firmware.uf2 --family rp2350-arm-s --abs-block
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT "Combining bootloader and application"
+)
 
-target_include_directories(firmware PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}/src/internal
-    ${CMAKE_CURRENT_LIST_DIR}/include
-    ${CONFIG_DIR}
+add_dependencies(firmware
+    bootloader
+    application
 )
 
 add_custom_target(flashpico
     COMMAND
         ${BASH}
         /bin/bash
-        ${CMAKE_CURRENT_LIST_DIR}/tools/program.sh "$<TARGET_FILE:firmware>"
+        ${CMAKE_CURRENT_LIST_DIR}/tools/program.sh "$<TARGET_FILE:application>"
     COMMENT "Flashing PICO"
 )
 
-get_target_property(FIRMWARE_SOURCES firmware SOURCES)
+get_target_property(FIRMWARE_SOURCES application SOURCES)
 
 add_custom_target(cppcheck
     COMMAND
@@ -101,8 +146,8 @@ add_custom_target(openocd
 add_custom_target(gdb
     COMMAND
         ${BASH}
-        gdb-multiarch -ex "target extended-remote localhost:3333" firmware.elf
+        gdb-multiarch -ex "target extended-remote localhost:3333" application.elf
     COMMENT "Attaching"
 )
 
-add_dependencies(flashpico firmware)
+add_dependencies(flashpico application)
