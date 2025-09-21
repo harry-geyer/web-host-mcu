@@ -1,9 +1,21 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Example</title>
-  </head>
-  <body>
-    <p>This is an example of a simple HTML page with one paragraph.</p>
-  </body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Config Editor</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Configuration Editor</h1>
+    <div id="status" class="status">Loading configuration...</div>
+    <textarea id="configEditor" class="editor" disabled></textarea>
+    <div class="buttons">
+      <button id="saveBtn" disabled>Save Config</button>
+      <button id="reloadBtn">Reload Config</button>
+    </div>
+  </div>
+  <script src="app.js"></script>
+</body>
 </html>
