@@ -8,9 +8,7 @@
 #include "lwip/apps/fs.h"
 
 #include "http_server.h"
-
-
-#define _HTTP_SERVER_JSON_BUF_SIZE              256
+#include "config.h"
 
 
 typedef struct _whm_http_server_rest_get_handler
@@ -28,7 +26,6 @@ static _whm_http_server_rest_get_handler_t* _whm_http_server_rest_get_handler_fi
 
 
 static void* _whm_http_server_current_connection = NULL;
-static char _whm_http_server_json_buff[_HTTP_SERVER_JSON_BUF_SIZE];
 
 
 static tCGI _whm_http_server_cgi_handlers[] =
@@ -167,17 +164,16 @@ static const char* _whm_http_server_cgi_handler_ ## _name (int index, int num_pa
 {                                                                                                                           \
     return _path;                                                                                                           \
 }
-__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(index, "index.html")
-__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(app, "app.js")
-__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(styles, "styles.css")
+__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(index, "/index.html")
+__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(app, "/app.js")
+__WHM_HTTP_SERVER_CGI_HANDLER_DEFAULT(styles, "/styles.css")
 
 
 static err_t _whm_http_server_rest_get_handler_config(struct fs_file *file, const char* name)
 {
-    strncpy(_whm_http_server_json_buff, "{\"test\":\"blah\"}", _HTTP_SERVER_JSON_BUF_SIZE);
-    _whm_http_server_json_buff[_HTTP_SERVER_JSON_BUF_SIZE-1] = '\0';
-    file->data = _whm_http_server_json_buff;
-    file->len = strnlen(_whm_http_server_json_buff, _HTTP_SERVER_JSON_BUF_SIZE-1);
+    const char* config = whm_config_get_string();
+    file->data = config;
+    file->len = strlen(config);
     file->index = file->len;
     file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
     return ERR_OK;

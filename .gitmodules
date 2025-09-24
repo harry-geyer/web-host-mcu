@@ -1,0 +1,3 @@
+[submodule "libs/tiny-json"]
+	path = libs/tiny-json
+	url = https://github.com/rafagafe/tiny-json.git

@@ -26,6 +26,8 @@ add_executable(application
     ${CMAKE_CURRENT_LIST_DIR}/src/main.c
     ${CMAKE_CURRENT_LIST_DIR}/src/dhcp_server.c
     ${CMAKE_CURRENT_LIST_DIR}/src/http_server.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/config.c
+    ${CMAKE_CURRENT_LIST_DIR}/libs/tiny-json/tiny-json.c
 )
 
 target_link_libraries(application
@@ -38,6 +40,8 @@ target_link_libraries(application
 pico_add_library(pico_httpd_webroot NOFLAG)
 pico_set_lwip_httpd_content(pico_httpd_webroot INTERFACE
     ${CMAKE_CURRENT_LIST_DIR}/webroot/index.html
+    ${CMAKE_CURRENT_LIST_DIR}/webroot/app.js
+    ${CMAKE_CURRENT_LIST_DIR}/webroot/styles.css
 )
 
 set_target_properties(application
@@ -54,6 +58,8 @@ ENDIF ()
 target_include_directories(application PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/src/internal
     ${CMAKE_CURRENT_LIST_DIR}/include
+    ${CMAKE_CURRENT_LIST_DIR}/bootloader/include
+    ${CMAKE_CURRENT_LIST_DIR}/libs/tiny-json
     ${CONFIG_DIR}
 )
 
