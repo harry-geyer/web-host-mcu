@@ -10,10 +10,23 @@
   <div class="container">
     <h1>Configuration Editor</h1>
     <div id="status" class="status">Loading configuration...</div>
-    <textarea id="configEditor" class="editor" disabled></textarea>
+    <label for="nameInput">Name</label>
+    <input type="text" id="nameInput" placeholder="Enter name" />
+    <label for="blinkingSlider">Blinking Time (ms)</label>
+    <div class="slider-container">
+      <input type="range" id="blinkingSlider" min="10" max="2000" step="10">
+      <input type="number" id="blinkingNumber" min="10" max="2000" step="10">
+    </div>
     <div class="buttons">
       <button id="saveBtn" disabled>Save Config</button>
       <button id="reloadBtn">Reload Config</button>
+    </div>
+
+    <div class="measurements">
+      <h2>Measurements</h2>
+      <div id="measurementsContainer" class="measurements-container">
+        Loading measurements...
+      </div>
     </div>
   </div>
   <script src="app.js"></script>

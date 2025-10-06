@@ -8,45 +8,50 @@ body {
   align-items: center;
   min-height: 100vh;
 }
-
 .container {
   background: #fff;
   padding: 20px 30px;
   border-radius: 12px;
   box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  max-width: 600px;
+  max-width: 400px;
   width: 100%;
 }
-
 h1 {
   text-align: center;
   margin-bottom: 20px;
 }
-
+label {
+  font-weight: bold;
+  display: block;
+  margin: 15px 0 5px;
+}
 .status {
   font-size: 14px;
   margin-bottom: 10px;
   color: #555;
 }
-
-.editor {
+input[type="text"],
+input[type="number"] {
   width: 100%;
-  height: 300px;
-  font-family: monospace;
-  font-size: 14px;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #ccc;
-  border-radius: 8px;
-  resize: vertical;
-  background-color: #fdfdfd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
 }
-
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+input[type="range"] {
+  flex: 1;
+}
 .buttons {
   display: flex;
   justify-content: space-between;
-  margin-top: 15px;
+  margin-top: 20px;
 }
-
 button {
   background-color: #007bff;
   color: white;
@@ -56,12 +61,42 @@ button {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
 button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
 }
-
 button:hover:not(:disabled) {
   background-color: #0056b3;
+}
+.measurements {
+  margin-top: 30px;
+}
+.measurements h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 5px;
+}
+.measurements-container {
+  background-color: #f9fafb;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+}
+.measurement-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+.measurement-item:last-child {
+  border-bottom: none;
+}
+.measurement-name {
+  font-weight: bold;
+  color: #333;
+}
+.measurement-value {
+  color: #007bff;
 }

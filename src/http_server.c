@@ -307,7 +307,7 @@ static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const 
         len = snprintf(
             _whm_http_server_response_buffer,
             _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1,
-            "{"
+            "["
                 "{"
                     "\"name\":\"relative_humidity\","
                     "\"value\":%"PRIu32".%03"PRIu32","
@@ -316,7 +316,8 @@ static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const 
                     "\"name\":\"temperature\","
                     "\"value\"%"PRId32".%03"PRIu32","
                     "\"unit\":\"celcius\""
-            "}",
+                "}"
+            "]",
             _whm_http_server_meas.rel_hum / 1000U, _whm_http_server_meas.rel_hum % 1000U,
             _whm_http_server_meas.temperature / 1000, WHM_ABS32(_whm_http_server_meas.temperature) % 1000U
         );
