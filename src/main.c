@@ -10,6 +10,7 @@
 
 #include "dhcp_server.h"
 #include "http_server.h"
+#include "htu31d.h"
 
 
 //#define WHM_AP_SSID             "Web-Host MCU"
@@ -27,6 +28,8 @@ static bool _done = false;
 int main(int argc, char **argv)
 {
     stdio_init_all();
+
+    whm_htu31d_init();
 
     int gpio_toggle = 1;
     if (cyw43_arch_init())
@@ -67,6 +70,7 @@ int main(int argc, char **argv)
         while (time_us_64() - loop_time < 250000)
         {
             tight_loop_contents();
+            whm_htu31d_iterate();
         }
         loop_time = time_us_64();
         gpio_toggle = (gpio_toggle + 1) % 2;
@@ -75,6 +79,7 @@ int main(int argc, char **argv)
 
     whm_http_server_deinit(&http_server);
     whm_dhcp_server_deinit(&dhcp_server);
+    whm_htu31d_deinit();
     return 0;
 }
 

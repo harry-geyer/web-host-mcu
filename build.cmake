@@ -27,6 +27,7 @@ add_executable(application
     ${CMAKE_CURRENT_LIST_DIR}/src/dhcp_server.c
     ${CMAKE_CURRENT_LIST_DIR}/src/http_server.c
     ${CMAKE_CURRENT_LIST_DIR}/src/config.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/htu31d.c
     ${CMAKE_CURRENT_LIST_DIR}/libs/tiny-json/tiny-json.c
 )
 
@@ -35,6 +36,7 @@ target_link_libraries(application
     pico_lwip_http
     pico_httpd_webroot
     pico_cyw43_arch_lwip_poll
+    hardware_i2c
 )
 
 pico_add_library(pico_httpd_webroot NOFLAG)
