@@ -9,6 +9,7 @@ body {
   min-height: 100vh;
 }
 .container {
+  position: relative;
   background: #fff;
   padding: 20px 30px;
   border-radius: 12px;
@@ -31,7 +32,8 @@ label {
   color: #555;
 }
 input[type="text"],
-input[type="number"] {
+input[type="number"],
+input[type="password"] {
   width: 100%;
   padding: 8px;
   border: 1px solid #ccc;
@@ -99,4 +101,48 @@ button:hover:not(:disabled) {
 }
 .measurement-value {
   color: #007bff;
+}
+.wifi-config {
+  margin-top: 25px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+}
+.wifi-config h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #333;
+}
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.password-container input {
+  flex: 1;
+  padding-right: 60px;
+}
+.toggle-password {
+  position: absolute;
+  right: 5px;
+  background: none;
+  border: none;
+  color: #007bff;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.toggle-password:hover {
+  text-decoration: underline;
+}
+.connection-status {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: gray;
+  border: 1px solid #555;
+  cursor: default;
 }

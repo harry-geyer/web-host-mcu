@@ -14,7 +14,7 @@
 
 
 //#define WHM_AP_SSID             "Web-Host MCU"
-#define WHM_AP_SSID             "SKYMMX37-B"
+#define WHM_AP_SSID             "Web-Host MCU"
 #define WHM_AP_PASSWORD         "host52%files"
 
 

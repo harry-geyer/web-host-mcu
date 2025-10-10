@@ -28,6 +28,7 @@ add_executable(application
     ${CMAKE_CURRENT_LIST_DIR}/src/http_server.c
     ${CMAKE_CURRENT_LIST_DIR}/src/config.c
     ${CMAKE_CURRENT_LIST_DIR}/src/htu31d.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/ap_station.c
     ${CMAKE_CURRENT_LIST_DIR}/libs/tiny-json/tiny-json.c
 )
 

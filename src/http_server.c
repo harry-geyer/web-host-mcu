@@ -12,6 +12,7 @@
 #include "config.h"
 #include "util.h"
 #include "htu31d.h"
+#include "ap_station.h"
 
 
 #define _WHM_HTTP_SERVER_CONFIG_BUFFER_SIZE                 1024
@@ -46,6 +47,7 @@ static const char* _whm_http_server_cgi_handler_app(int index, int num_params, c
 static const char* _whm_http_server_cgi_handler_styles(int index, int num_params, char *pc_param[], char *pc_value[]);
 static err_t _whm_http_server_rest_get_handler_config(struct fs_file *file, const char* name);
 static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const char* name);
+static err_t _whm_http_server_rest_get_handler_status(struct fs_file *file, const char* name);
 static void _whm_http_server_meas_finish(void* userdata, bool success, uint32_t rh_e3, int32_t t_e3);
 static err_t _whm_http_server_rest_post_handler_config_begin(const char* http_request, uint16_t http_request_len, int content_len, char* response_uri, uint16_t response_uri_len, uint8_t* post_auto_wnd);
 static err_t _whm_http_server_rest_post_handler_config_recv(struct pbuf* p);
@@ -86,6 +88,7 @@ static _whm_http_server_rest_get_handler_t _whm_http_server_rest_get_handlers[] 
 {
     {"/api/config" , _whm_http_server_rest_get_handler_config},
     {"/api/meas" , _whm_http_server_rest_get_handler_meas},
+    {"/api/status" , _whm_http_server_rest_get_handler_status},
 };
 
 
@@ -333,6 +336,23 @@ static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const 
         _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
         len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
     }
+    file->data = _whm_http_server_response_buffer;
+    file->len = len;
+    file->index = file->len;
+    file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
+    return ERR_OK;
+}
+
+
+static err_t _whm_http_server_rest_get_handler_status(struct fs_file *file, const char* name)
+{
+    bool is_connected = whm_ap_station_get_connected();
+    unsigned len = snprintf(
+        _whm_http_server_response_buffer,
+        _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE,
+        "{\"network\":{\"connected\":%s}}",
+        is_connected ? "true" : "false"
+    );
     file->data = _whm_http_server_response_buffer;
     file->len = len;
     file->index = file->len;

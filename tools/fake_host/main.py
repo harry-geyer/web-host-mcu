@@ -6,9 +6,20 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 
+class Network(BaseModel):
+    connected: bool
+    station_ssid: str | None
+
+
+class Status(BaseModel):
+    network: Network
+
+
 class Config(BaseModel):
     name: str
     blinking_ms: int
+    station_ssid: str | None
+    station_password: str | None
 
 
 class Measurements(BaseModel):
@@ -19,11 +30,26 @@ class Measurements(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    static_config = Config(name="Web-Host MCU", blinking_ms=250)
-    var = {"static_config": static_config}
+    var = {}
+    var["static_config"] = Config(
+        name="Web-Host MCU",
+        blinking_ms=250,
+        station_ssid=None,
+        station_password=None,
+    )
+    var["status"] = Status(
+        network=Network(
+            connected=False,
+            station_ssid=None,
+        ),
+    )
     yield {"var": var}
 
 app = FastAPI(lifespan=lifespan)
+
+@app.get("/api/status")
+async def get_status(request: Request) -> Status:
+    return request.state.var["status"]
 
 @app.get("/api/config")
 async def get_config(request: Request) -> Config:
