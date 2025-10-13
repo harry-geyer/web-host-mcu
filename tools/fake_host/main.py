@@ -1,3 +1,4 @@
+import time
 from typing import Annotated, List
 from fastapi import FastAPI, Request, Response, status
 from fastapi.staticfiles import StaticFiles
@@ -67,7 +68,7 @@ async def lifespan(app: FastAPI):
     yield {"var": var}
 
 app = FastAPI(lifespan=lifespan)
-WIFI_SCAN_TIME = 5
+WIFI_SCAN_TIME = 2.
 
 @app.get("/api/status")
 async def get_status(request: Request) -> Status:

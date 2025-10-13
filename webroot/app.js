@@ -10,6 +10,12 @@ const togglePasswordBtn = document.getElementById('togglePasswordBtn')
 const saveBtn = document.getElementById('saveBtn')
 const reloadBtn = document.getElementById('reloadBtn')
 const measurementsContainer = document.getElementById('measurementsContainer')
+const scanWifiBtn = document.getElementById('scanWifiBtn')
+const ssidDropdown = document.getElementById('ssidDropdown')
+const ssidLoader = document.getElementById('ssidLoader')
+
+
+let lastStations = []
 
 
 function setStatus(msg) {
@@ -91,7 +97,7 @@ async function loadStatus() {
             wifiConfig.style.display = 'block'
             connectionStatus.style.backgroundColor = 'orange'
             connectionStatus.title = 'Wi-Fi disconnected'
-            setStatus('Network not connected. Configure Wi-Fi.')
+            //setStatus('Network not connected. Configure Wi-Fi.')
         }
     } catch (err) {
         wifiConfig.style.display = 'block'
@@ -100,7 +106,6 @@ async function loadStatus() {
         setStatus('Failed to fetch network status. Wi-Fi config visible.')
     }
 }
-
 
 function renderMeasurements(list) {
     if (!Array.isArray(list) || list.length === 0) {
@@ -129,12 +134,143 @@ async function fetchMeasurements() {
     }
 }
 
+function renderSSIDDropdown(stations) {
+    ssidDropdown.innerHTML = ''
+    if (!stations || stations.length === 0) {
+        ssidDropdown.style.display = 'none'
+        return
+    }
+
+    stations.forEach(st => {
+        const div = document.createElement('div')
+        div.className = 'ssid-item'
+        const signalWrapper = document.createElement('span')
+        signalWrapper.innerHTML = getSignalIcon(st.rssi)
+        const ssidText = document.createElement('span')
+        ssidText.textContent = st.ssid || '(Unnamed)'
+        ssidText.className = 'ssid-text'
+        ssidText.title = `MAC: ${st.mac || 'Unknown'}\nChannel: ${st.channel || 'N/A'}`
+        const lockIcon = document.createElement('span')
+        lockIcon.className = 'ssid-lock'
+        lockIcon.title = st.auth || ''
+        lockIcon.textContent = (st.auth && st.auth !== 'OPEN') ? '🔒' : ''
+        div.appendChild(signalWrapper)
+        div.appendChild(ssidText)
+        div.appendChild(lockIcon)
+        div.addEventListener('click', () => {
+            ssidInput.value = st.ssid
+            ssidDropdown.style.display = 'none'
+            if (st.auth === 'OPEN') {
+                passwordInput.value = ''
+                passwordInput.disabled = true
+                passwordInput.placeholder = 'Open network (no password)'
+                passwordInput.classList.add('disabled-input')
+            } else {
+                passwordInput.disabled = false
+                passwordInput.placeholder = 'Enter Wi-Fi password'
+                passwordInput.classList.remove('disabled-input')
+            }
+        })
+
+        ssidDropdown.appendChild(div)
+    })
+    ssidDropdown.style.display = 'block'
+    ssidDropdown.style.zIndex = 1000
+}
+
+function getSignalIcon(rssi) {
+    let level = 0
+    let text = 'Very Weak'
+    if (rssi >= -40) {
+        level = 4
+        text = 'Excellent'
+    } else if (rssi >= -55) {
+        level = 3
+        text = 'Good'
+    } else if (rssi >= -70) {
+        level = 2
+        text = 'Fair'
+    } else if (rssi >= -85) {
+        level = 1
+        text = 'Weak'
+    } else {
+        level = 0
+        text = 'Very Weak'
+    }
+    return `
+        <i class="icon__signal-strength signal-${level}" title="Signal strength: ${text}\nRSSI: ${rssi}">
+            <span class="bar-1"></span>
+            <span class="bar-2"></span>
+            <span class="bar-3"></span>
+            <span class="bar-4"></span>
+        </i>
+    `
+}
+
+document.addEventListener('click', (e) => {
+    if (!ssidDropdown.contains(e.target) && !scanWifiBtn.contains(e.target) && !dropDownBtn.contains(e.target)) {
+        ssidDropdown.style.display = 'none'
+    }
+})
+
 saveBtn.addEventListener('click', saveConfig)
 reloadBtn.addEventListener('click', loadConfig)
 togglePasswordBtn.addEventListener('click', () => {
-  const isHidden = passwordInput.type === 'password'
-  passwordInput.type = isHidden ? 'text' : 'password'
-  togglePasswordBtn.textContent = isHidden ? 'Hide' : 'Show'
+    const isHidden = passwordInput.type === 'password'
+    passwordInput.type = isHidden ? 'text' : 'password'
+    togglePasswordBtn.textContent = isHidden ? 'Hide' : 'Show'
+})
+
+scanWifiBtn.addEventListener('click', async () => {
+    setStatus('Starting Wi-Fi scan...')
+    ssidDropdown.style.display = 'none'
+    ssidLoader.style.display = 'inline-block'
+    try {
+        const startRes = await fetch('/api/wifi-scan-start')
+        if (!startRes.ok) throw new Error(`HTTP error: ${startRes.status}`)
+        const startData = await startRes.json()
+        if (startData.status !== 'ok') throw new Error('Scan start failed')
+
+        setStatus('Scanning... Please wait 3 seconds...')
+        await new Promise(r => setTimeout(r, 3000))
+
+        const getRes = await fetch('/api/wifi-scan-get')
+        if (!getRes.ok) {
+            if (getRes.status === 409) setStatus('Scan not started.')
+            else if (getRes.status === 425) setStatus('Scan not ready yet.')
+            else throw new Error(`HTTP error: ${getRes.status}`)
+            return
+        }
+
+        const data = await getRes.json()
+        if (data.status !== 'ok' || !Array.isArray(data.stations)) {
+            setStatus('No stations found.')
+            return
+        }
+
+        lastStations = data.stations
+        renderSSIDDropdown(lastStations)
+        setStatus(`Found ${lastStations.length} networks.`)
+    } catch (err) {
+        console.error(err)
+        setStatus('Failed to scan Wi-Fi.')
+    } finally {
+        ssidLoader.style.display = 'none'
+    }
+})
+
+dropDownBtn.addEventListener('click', () => {
+    if (!lastStations || lastStations.length === 0) {
+        setStatus('No previous scan results. Please scan first.')
+        return
+    }
+    renderSSIDDropdown(lastStations)
+})
+
+ssidInput.addEventListener('input', () => {
+    passwordInput.disabled = false
+    passwordInput.placeholder = 'Enter Wi-Fi password'
+    passwordInput.classList.remove('disabled-input')
 })
 
 loadStatus().then(() => {

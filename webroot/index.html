@@ -20,8 +20,15 @@
     </div>
     <div class="wifiConfigSection" id="wifiConfig" style="">
       <h2>Wi-Fi Configuration</h2>
-      <label for="ssidInput">SSID</label>
-      <input type="text" id="ssidInput" placeholder="Enter Wi-Fi SSID" />
+      <label for="ssidInput">SSID
+          <div id="ssidLoader" class="ssid-loader" style="display: none;"></div>
+      </label>
+      <div class="ssid-container">
+          <input type="text" id="ssidInput" placeholder="Enter Wi-Fi SSID" />
+          <button type="button" id="scanWifiBtn" class="ssid-btn">Scan</button>
+          <button type="button" id="dropDownBtn" class="ssid-btn">▼</button>
+          <div id="ssidDropdown" class="ssid-dropdown" style="display: none;"></div>
+      </div>
       <label for="passwordInput">Password</label>
       <div class="password-container">
         <input type="password" id="passwordInput" placeholder="Enter Wi-Fi password" />
