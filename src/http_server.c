@@ -48,12 +48,16 @@ static const char* _whm_http_server_cgi_handler_styles(int index, int num_params
 static err_t _whm_http_server_rest_get_handler_config(struct fs_file *file, const char* name);
 static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const char* name);
 static err_t _whm_http_server_rest_get_handler_status(struct fs_file *file, const char* name);
+static err_t _whm_http_server_rest_get_handler_wifi_scan_start(struct fs_file *file, const char* name);
+static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *file, const char* name);
 static void _whm_http_server_meas_finish(void* userdata, bool success, uint32_t rh_e3, int32_t t_e3);
 static err_t _whm_http_server_rest_post_handler_config_begin(const char* http_request, uint16_t http_request_len, int content_len, char* response_uri, uint16_t response_uri_len, uint8_t* post_auto_wnd);
 static err_t _whm_http_server_rest_post_handler_config_recv(struct pbuf* p);
 static err_t _whm_http_server_rest_post_handler_config_finish(char* response_uri, uint16_t response_uri_len);
 static _whm_http_server_rest_get_handler_t* _whm_http_server_rest_get_handler_find(const char* uri);
 static _whm_http_server_rest_post_handler_t* _whm_http_server_rest_post_handler_find(const char* uri);
+static int _whm_http_server_gen_mac(char* buf, unsigned buflen, const uint8_t* bssid, unsigned bssid_len);
+static const char* _whm_http_server_gen_auth(uint8_t auth);
 
 
 static char _whm_http_server_config_buffer[_WHM_HTTP_SERVER_CONFIG_BUFFER_SIZE];
@@ -89,6 +93,8 @@ static _whm_http_server_rest_get_handler_t _whm_http_server_rest_get_handlers[] 
     {"/api/config" , _whm_http_server_rest_get_handler_config},
     {"/api/meas" , _whm_http_server_rest_get_handler_meas},
     {"/api/status" , _whm_http_server_rest_get_handler_status},
+    {"/api/wifi-scan-start" , _whm_http_server_rest_get_handler_wifi_scan_start},
+    {"/api/wifi-scan-get" , _whm_http_server_rest_get_handler_wifi_scan_get},
 };
 
 
@@ -361,6 +367,64 @@ static err_t _whm_http_server_rest_get_handler_status(struct fs_file *file, cons
 }
 
 
+static err_t _whm_http_server_rest_get_handler_wifi_scan_start(struct fs_file *file, const char* name)
+{
+    bool started = whm_ap_station_start_scan();
+    unsigned len = snprintf(
+        _whm_http_server_response_buffer,
+        _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE,
+        "{\"status\":\"ok\",\"scan\":\"%s\"}",
+        started ? "started" : "failed"
+    );
+    file->data = _whm_http_server_response_buffer;
+    file->len = len;
+    file->index = file->len;
+    file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
+    return ERR_OK;
+}
+
+
+static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *file, const char* name)
+{
+    whm_ap_station_scan_result_t* results = whm_ap_station_get_scan();
+    unsigned len = 0;
+    if (NULL == results)
+    {
+        strncpy(
+            _whm_http_server_response_buffer,
+            "{\"status\":\"error\"}",
+            _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE
+        );
+        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+    }
+    else
+    {
+        strncpy(_whm_http_server_response_buffer, "{\"status\":\"ok\",\"stations\":[", _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE);
+        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+        char* p = &_whm_http_server_response_buffer[len];
+        whm_ap_station_scan_result_t* c = results;
+        while (c)
+        {
+            const cyw43_ev_scan_result_t* r = &c->result;
+            char mac_address[18];
+            _whm_http_server_gen_mac(mac_address, 18, r->bssid, sizeof(r->bssid));
+            const char* auth = _whm_http_server_gen_auth(r->auth_mode);
+            len += snprintf(p, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE - len,
+                "{\"ssid\":\"%.*s\",\"mac\":\"%s\",\"channel\":%"PRIu16",\"auth\":\"%s\",\"rssi\":%"PRId16"},",
+                r->ssid_len, r->ssid, mac_address, r->channel, auth, r->rssi
+            );
+        }
+        _whm_http_server_response_buffer[len-1] = ']';
+        _whm_http_server_response_buffer[len] = '}';
+    }
+    file->data = _whm_http_server_response_buffer;
+    file->len = len;
+    file->index = file->len;
+    file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
+    return ERR_OK;
+}
+
+
 static void _whm_http_server_meas_finish(void* userdata, bool success, uint32_t rh_e3, int32_t t_e3)
 {
     _whm_http_server_meas.done = true;
@@ -396,4 +460,50 @@ static err_t _whm_http_server_rest_post_handler_config_finish(char* response_uri
     strncpy(_whm_http_server_response_buffer, "{\"status\":\"ok\"}", _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
     _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
     return ERR_OK;
+}
+
+
+static int _whm_http_server_gen_mac(char* buf, unsigned buflen, const uint8_t* bssid, unsigned bssid_len)
+{
+    int len = 0;
+    char* p = buf;
+    for (unsigned i = 0; i < bssid_len; i++)
+    {
+        if (buf + buflen <= p)
+        {
+            break;
+        }
+        len += snprintf(p, buf+buflen - p, "%02"PRIx8":", bssid[i]);
+        p = buf + len;
+    }
+    buf[--len] = '\0';
+    return len;
+}
+
+
+static const char* _whm_http_server_gen_auth(uint8_t auth)
+{
+    /* Unfortunately these auths aren't CYW43_AUTH_, but made up of some
+     * different values
+        OPEN  = 0x0
+        WEP  |= 0x1
+        WPA  |= 0x2
+        WPA2 |= 0x4
+    */
+    switch(auth)
+    {
+        case 0x0:
+            return "OPEN";
+        case 0x1:
+            return "WEP";
+        case 0x2:
+            return "WPA";
+        case 0x4:
+            return "WPA2";
+        case 0x6:
+            return "WPA2_MIXED";
+        default:
+            break;
+    }
+    return "UNKNOWN";
 }

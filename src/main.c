@@ -11,18 +11,7 @@
 #include "dhcp_server.h"
 #include "http_server.h"
 #include "htu31d.h"
-
-
-//#define WHM_AP_SSID             "Web-Host MCU"
-#define WHM_AP_SSID             "Web-Host MCU"
-#define WHM_AP_PASSWORD         "host52%files"
-
-
-static int _init_ap(const char* ssid, const char* password);
-static int _init_dhcp(ip_addr_t* gateway);
-
-
-static bool _done = false;
+#include "ap_station.h"
 
 
 int main(int argc, char **argv)
@@ -42,7 +31,7 @@ int main(int argc, char **argv)
     printf("----start----\n");
     printf("Version : %s\n", FIRMWARE_SHA1);
 
-    int ret = _init_ap(WHM_AP_SSID, WHM_AP_PASSWORD);
+    int ret = whm_ap_station_init();
     if (ret)
     {
         printf("Failed to initialise access point\n");
@@ -64,12 +53,14 @@ int main(int argc, char **argv)
         return ret;
     }
 
+    bool done = false;
     uint64_t loop_time = 0;
-    while (!_done)
+    while (!done)
     {
         while (time_us_64() - loop_time < 250000)
         {
             tight_loop_contents();
+            whm_ap_station_iterate();
             whm_htu31d_iterate();
         }
         loop_time = time_us_64();
@@ -80,12 +71,5 @@ int main(int argc, char **argv)
     whm_http_server_deinit(&http_server);
     whm_dhcp_server_deinit(&dhcp_server);
     whm_htu31d_deinit();
-    return 0;
-}
-
-
-static int _init_ap(const char* ssid, const char* password)
-{
-    cyw43_arch_enable_ap_mode(ssid, password, CYW43_AUTH_WPA2_AES_PSK);
     return 0;
 }

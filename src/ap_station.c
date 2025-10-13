@@ -115,7 +115,14 @@ void whm_ap_station_reload(void)
 
 bool whm_ap_station_get_connection(char** ssid, char** password)
 {
-    return false;
+    bool ret = false;
+    if (strlen(whm_conf.station.ssid))
+    {
+        *ssid = whm_conf.station.ssid;
+        *password = whm_conf.station.password;
+        ret = true;
+    }
+    return ret;
 }
 
 
@@ -128,6 +135,11 @@ bool whm_ap_station_get_connected(void)
 bool whm_ap_station_start_scan(void)
 {
     bool ret = false;
+    if (NULL != whm_ap_station_scan_results)
+    {
+        /* free if not already */
+        whm_ap_station_scan_results_free();
+    }
     cyw43_wifi_scan_options_t scan_options = {0};
     if (0 == cyw43_wifi_scan(&cyw43_state, &scan_options, (void*)whm_ap_station_scan_results, _whm_ap_station_scan_result))
     {
@@ -135,6 +147,12 @@ bool whm_ap_station_start_scan(void)
         _whm_ap_station_ctx.state = _WHM_AP_STATION_STATE_SCAN;
     }
     return ret;
+}
+
+
+whm_ap_station_scan_result_t* whm_ap_station_get_scan(void)
+{
+    return whm_ap_station_scan_results;
 }
 
 
