@@ -6,15 +6,14 @@ module.exports = {
   entry: {}, // no JS entry because we're using pre-built files
   output: {
     filename: '[name].js', // unused but required by webpack
-    path: path.resolve(__dirname, '../build/webroot'), // output folder
-    clean: true, // cleans build/webroot before building
+    path: path.resolve(__dirname, '../build/webroot') // output folder
   },
   plugins: [
     new HtmlWebpackPlugin({
       templateContent: ({ htmlWebpackPlugin }) => {
         // Read pre-minified JS and CSS
-        const js = fs.readFileSync(path.resolve(__dirname, '../build/webroot/app.min.js'), 'utf8');
-        const css = fs.readFileSync(path.resolve(__dirname, '../build/webroot/styles.min.css'), 'utf8');
+        const js = fs.readFileSync(path.resolve(__dirname, '../build/web/app.min.js'), 'utf8');
+        const css = fs.readFileSync(path.resolve(__dirname, '../build/web/styles.min.css'), 'utf8');
 
         // Read the base index.html
         const html = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf8');

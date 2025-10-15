@@ -50,23 +50,23 @@ pico_set_lwip_httpd_content(pico_httpd_webroot INTERFACE
 )
 
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/webroot/app.min.js
-    COMMAND ${TERSER} ${CMAKE_SOURCE_DIR}/webroot/app.js --mangle --compress --output ${CMAKE_BINARY_DIR}/webroot/app.min.js
-    DEPENDS ${CMAKE_SOURCE_DIR}/webroot/app.js
+    OUTPUT ${CMAKE_BINARY_DIR}/web/app.min.js
+    COMMAND ${TERSER} ${CMAKE_SOURCE_DIR}/web/app.js --mangle --compress --output ${CMAKE_BINARY_DIR}/web/app.min.js
+    DEPENDS ${CMAKE_SOURCE_DIR}/web/app.js
     COMMENT "Minifying JavaScript"
 )
 
 add_custom_command(
-    OUTPUT ${CMAKE_BINARY_DIR}/webroot/styles.min.css
-    COMMAND ${CLEANCSS} ${CMAKE_SOURCE_DIR}/webroot/styles.css -O2 -o ${CMAKE_BINARY_DIR}/webroot/styles.min.css
-    DEPENDS ${CMAKE_SOURCE_DIR}/webroot/styles.css
+    OUTPUT ${CMAKE_BINARY_DIR}/web/styles.min.css
+    COMMAND ${CLEANCSS} ${CMAKE_SOURCE_DIR}/web/styles.css -O2 -o ${CMAKE_BINARY_DIR}/web/styles.min.css
+    DEPENDS ${CMAKE_SOURCE_DIR}/web/styles.css
     COMMENT "Minifying CSS"
 )
 
 add_custom_command(
     OUTPUT ${CMAKE_BINARY_DIR}/webroot/index.html
-    COMMAND ${WEBPACK} --config ${CMAKE_SOURCE_DIR}/webroot/.webpack.config.js
-    DEPENDS ${CMAKE_CURRENT_LIST_DIR}/webroot/index.html ${CMAKE_BINARY_DIR}/webroot/app.min.js ${CMAKE_BINARY_DIR}/webroot/styles.min.css
+    COMMAND ${WEBPACK} --config ${CMAKE_SOURCE_DIR}/web/.webpack.config.js
+    DEPENDS ${CMAKE_CURRENT_LIST_DIR}/web/index.html ${CMAKE_BINARY_DIR}/web/app.min.js ${CMAKE_BINARY_DIR}/web/styles.min.css
     COMMENT "Combining with HTML"
 )
 
