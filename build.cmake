@@ -2,6 +2,10 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
+find_program(TERSER terser)
+find_program(CLEANCSS cleancss)
+find_program(WEBPACK webpack-cli)
+
 add_compile_options(-Wall
     -Werror
     -Wno-format          # int != int32_t as far as the compiler is concerned because gcc has int32_t as long int
@@ -42,9 +46,28 @@ target_link_libraries(application
 
 pico_add_library(pico_httpd_webroot NOFLAG)
 pico_set_lwip_httpd_content(pico_httpd_webroot INTERFACE
-    ${CMAKE_CURRENT_LIST_DIR}/webroot/index.html
-    ${CMAKE_CURRENT_LIST_DIR}/webroot/app.js
-    ${CMAKE_CURRENT_LIST_DIR}/webroot/styles.css
+    ${CMAKE_BINARY_DIR}/webroot/index.html
+)
+
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/webroot/app.min.js
+    COMMAND ${TERSER} ${CMAKE_SOURCE_DIR}/webroot/app.js --mangle --compress --output ${CMAKE_BINARY_DIR}/webroot/app.min.js
+    DEPENDS ${CMAKE_SOURCE_DIR}/webroot/app.js
+    COMMENT "Minifying JavaScript"
+)
+
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/webroot/styles.min.css
+    COMMAND ${CLEANCSS} ${CMAKE_SOURCE_DIR}/webroot/styles.css -O2 -o ${CMAKE_BINARY_DIR}/webroot/styles.min.css
+    DEPENDS ${CMAKE_SOURCE_DIR}/webroot/styles.css
+    COMMENT "Minifying CSS"
+)
+
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/webroot/index.html
+    COMMAND ${WEBPACK} --config ${CMAKE_SOURCE_DIR}/webroot/.webpack.config.js
+    DEPENDS ${CMAKE_CURRENT_LIST_DIR}/webroot/index.html ${CMAKE_BINARY_DIR}/webroot/app.min.js ${CMAKE_BINARY_DIR}/webroot/styles.min.css
+    COMMENT "Combining with HTML"
 )
 
 set_target_properties(application
@@ -192,6 +215,7 @@ add_custom_target(fake_host
     COMMAND
         ${BASH}
         ${HOST_VENV}/bin/fastapi dev ${CMAKE_SOURCE_DIR}/tools/fake_host/main.py
+    DEPENDS ${CMAKE_BINARY_DIR}/webroot/index.html
     COMMENT "Hosting"
 )
 

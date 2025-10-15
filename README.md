@@ -29,6 +29,9 @@ Dependancies:
   to be exported)
 - python3 (just for developing really)
 - python3-venv
+- terser
+- cleancss
+- webpack-cli
 
 To build:
 
@@ -67,5 +70,9 @@ This is useful when developing the hosted webpage as you do not need to
 continually flash the MCU, but of course the backend of the API is
 completely different and would need to be implemented on both the fake_host
 and the real embedded application.
+
+Both the real, embedded webserver and the development webserver will
+host a single minified HTML file which reduces the number of requests to
+the server.
 
 License: see License file.

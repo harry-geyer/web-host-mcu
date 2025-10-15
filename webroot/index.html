@@ -1,53 +1,40 @@
-<!DOCTYPE html>
-<link rel="icon" href="data:,">
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Config Editor</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="container">
-    <div class="connection-status" id="connectionStatus" title="Checking..."></div>
-    <h1>Configuration Editor</h1>
-    <div id="status" class="status">Loading configuration...</div>
-    <label for="nameInput">Name</label>
-    <input type="text" id="nameInput" placeholder="Enter name" />
-    <label for="blinkingSlider">Blinking Time (ms)</label>
-    <div class="slider-container">
-      <input type="range" id="blinkingSlider" min="10" max="2000" step="10">
-      <input type="number" id="blinkingNumber" min="10" max="2000" step="10">
+<div class="container">
+  <div class="connection-status" id="connectionStatus" title="Checking..."></div>
+  <h1>Configuration Editor</h1>
+  <div id="status" class="status">Loading configuration...</div>
+  <label for="nameInput">Name</label>
+  <input type="text" id="nameInput" placeholder="Enter name" />
+  <label for="blinkingSlider">Blinking Time (ms)</label>
+  <div class="slider-container">
+    <input type="range" id="blinkingSlider" min="10" max="2000" step="10">
+    <input type="number" id="blinkingNumber" min="10" max="2000" step="10">
+  </div>
+  <div class="wifiConfigSection" id="wifiConfig" style="">
+    <h2>Wi-Fi Configuration</h2>
+    <label for="ssidInput">SSID
+        <div id="ssidLoader" class="ssid-loader" style="display: none;"></div>
+    </label>
+    <div class="ssid-container">
+        <input type="text" id="ssidInput" placeholder="Enter Wi-Fi SSID" />
+        <button type="button" id="scanWifiBtn" class="ssid-btn">Scan</button>
+        <button type="button" id="dropDownBtn" class="ssid-btn">▼</button>
+        <div id="ssidDropdown" class="ssid-dropdown" style="display: none;"></div>
     </div>
-    <div class="wifiConfigSection" id="wifiConfig" style="">
-      <h2>Wi-Fi Configuration</h2>
-      <label for="ssidInput">SSID
-          <div id="ssidLoader" class="ssid-loader" style="display: none;"></div>
-      </label>
-      <div class="ssid-container">
-          <input type="text" id="ssidInput" placeholder="Enter Wi-Fi SSID" />
-          <button type="button" id="scanWifiBtn" class="ssid-btn">Scan</button>
-          <button type="button" id="dropDownBtn" class="ssid-btn">▼</button>
-          <div id="ssidDropdown" class="ssid-dropdown" style="display: none;"></div>
-      </div>
-      <label for="passwordInput">Password</label>
-      <div class="password-container">
-        <input type="password" id="passwordInput" placeholder="Enter Wi-Fi password" />
-        <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
-      </div>
-    </div>
-    <div class="buttons">
-      <button id="saveBtn" disabled>Save Config</button>
-      <button id="reloadBtn">Reload Config</button>
-    </div>
-
-    <div class="measurements">
-      <h2>Measurements</h2>
-      <div id="measurementsContainer" class="measurements-container">
-        Loading measurements...
-      </div>
+    <label for="passwordInput">Password</label>
+    <div class="password-container">
+      <input type="password" id="passwordInput" placeholder="Enter Wi-Fi password" />
+      <button type="button" id="togglePasswordBtn" class="toggle-password">Show</button>
     </div>
   </div>
-  <script src="app.js"></script>
-</body>
-</html>
+  <div class="buttons">
+    <button id="saveBtn" disabled>Save Config</button>
+    <button id="reloadBtn">Reload Config</button>
+  </div>
+
+  <div class="measurements">
+    <h2>Measurements</h2>
+    <div id="measurementsContainer" class="measurements-container">
+      Loading measurements...
+    </div>
+  </div>
+</div>

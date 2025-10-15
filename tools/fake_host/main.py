@@ -154,4 +154,4 @@ async def get_wifi_scan_get(
         ],
     }
 
-app.mount("/", StaticFiles(directory=Path("../webroot")), name="webroot")
+app.mount("/", StaticFiles(directory=Path("webroot")), name="webroot")
