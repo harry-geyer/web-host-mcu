@@ -61,7 +61,9 @@ int main(int argc, char **argv)
     uint64_t loop_time = 0;
     while (!done)
     {
-        while (time_us_64() - loop_time < WHM_MS_TO_US(whm_conf.blinking_ms))
+        uint64_t blinking_time_us = whm_conf.blinking_ms ? whm_conf.blinking_ms : 250;
+        blinking_time_us = WHM_MS_TO_US(blinking_time_us);
+        while (time_us_64() - loop_time < blinking_time_us)
         {
             tight_loop_contents();
             whm_ap_station_iterate();

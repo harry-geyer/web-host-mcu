@@ -62,6 +62,7 @@ static const char* _whm_http_server_gen_auth(uint8_t auth);
 static char _whm_http_server_config_buffer[_WHM_HTTP_SERVER_CONFIG_BUFFER_SIZE];
 static char* _whm_http_server_config_pos = _whm_http_server_config_buffer;
 static char _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE];
+static int _whm_http_server_response_code = ERR_OK;
 static int _whm_http_server_current_rest_req = 0;
 static void* _whm_http_server_current_connection = NULL;
 static _whm_http_server_rest_post_handler_t* _whm_http_server_current_post = NULL;
@@ -125,18 +126,15 @@ err_t httpd_post_begin(void* connection, const char* uri, const char* http_reque
         uint16_t http_request_len, int content_len, char* response_uri,
         uint16_t response_uri_len, uint8_t* post_auto_wnd)
 {
-    printf("POST BEGIN\n");
     _whm_http_server_current_rest_req++;
     err_t ret = ERR_VAL;
     if (_whm_http_server_current_connection != connection)
     {
-        printf("NEW CONNECTION\n");
         _whm_http_server_current_connection = connection;
         _whm_http_server_rest_post_handler_t* h = _whm_http_server_rest_post_handler_find(uri);
         _whm_http_server_current_post = h;
         if (NULL != h)
         {
-            printf("HAS HANDLER\n");
             ret = h->begin_handler(http_request, http_request_len, content_len, response_uri, response_uri_len, post_auto_wnd);
         }
     }
@@ -146,7 +144,6 @@ err_t httpd_post_begin(void* connection, const char* uri, const char* http_reque
 
 err_t httpd_post_receive_data(void *connection, struct pbuf *p)
 {
-    printf("POST RECV\n");
     err_t ret = ERR_VAL;
     if (_whm_http_server_current_connection == connection
         && p && p->len)
@@ -157,7 +154,6 @@ err_t httpd_post_receive_data(void *connection, struct pbuf *p)
             h->recv_handler(p);
         }
         ret = ERR_OK;
-        printf("POST RECV OK\n");
     }
     pbuf_free(p);
     return ret;
@@ -176,7 +172,6 @@ void httpd_post_finished(void* connection, char* response_uri, uint16_t response
     }
     _whm_http_server_current_connection = NULL;
     _whm_http_server_current_post = NULL;
-    printf("POST FIN\n");
 }
 
 
@@ -198,7 +193,7 @@ int fs_open_custom(struct fs_file* file, const char* name)
     if (0 < _whm_http_server_current_rest_req)
     {
         _whm_http_server_current_rest_req--;
-        printf("FS SERVING POST: %s\n", name);
+        printf("POST: %s\n", name);
         _whm_http_server_rest_post_handler_t* h = _whm_http_server_rest_post_handler_find(name);
         if (NULL != h)
         {
@@ -206,13 +201,14 @@ int fs_open_custom(struct fs_file* file, const char* name)
             file->len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
             file->index = file->len;
             file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
-            ret = 1;
+            ret = ERR_OK == _whm_http_server_response_code;
+            _whm_http_server_response_code = ERR_OK;
         }
     }
     else
     {
         _whm_http_server_current_rest_req = 0;
-        printf("FS SERVING GET: %s\n", name);
+        printf("GET: %s\n", name);
         _whm_http_server_rest_get_handler_t* h = _whm_http_server_rest_get_handler_find(name);
         ret = (NULL != h && ERR_OK == h->handler(file, name));
     }
@@ -359,6 +355,7 @@ static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *fil
 {
     whm_ap_station_scan_result_t* results = whm_ap_station_get_scan();
     unsigned len = 0;
+    int ret = ERR_OK;
     if (NULL == results)
     {
         strncpy(
@@ -367,6 +364,7 @@ static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *fil
             _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE
         );
         len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+        ret = ERR_INPROGRESS;
     }
     else
     {
@@ -393,7 +391,7 @@ static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *fil
     file->len = len;
     file->index = file->len;
     file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
-    return ERR_OK;
+    return ret;
 }
 
 
@@ -408,7 +406,6 @@ static void _whm_http_server_meas_finish(void* userdata, bool success, uint32_t 
 
 static err_t _whm_http_server_rest_post_handler_config_begin(const char* http_request, uint16_t http_request_len, int content_len, char* response_uri, uint16_t response_uri_len, uint8_t* post_auto_wnd)
 {
-    printf("BEGIN CONFIG POST\n");
     _whm_http_server_config_buffer[0] = '\0';
     *post_auto_wnd = 1;
     return ERR_OK;
@@ -417,7 +414,6 @@ static err_t _whm_http_server_rest_post_handler_config_begin(const char* http_re
 
 static err_t _whm_http_server_rest_post_handler_config_recv(struct pbuf* p)
 {
-    printf("RECV CONFIG POST\n");
     int ret = ERR_VAL;
     int rem_size = _whm_http_server_config_pos - _whm_http_server_config_buffer + _WHM_HTTP_SERVER_CONFIG_BUFFER_SIZE;
     if (p && p->len < rem_size)
@@ -426,8 +422,6 @@ static err_t _whm_http_server_rest_post_handler_config_recv(struct pbuf* p)
         _whm_http_server_config_pos[p->len] = '\0';
         _whm_http_server_config_pos += p->len;
         ret = ERR_OK;
-        printf("RECV CONFIG POST OK\n");
-        printf("RECV: %.*s\n", p->len, (char*)p->payload);
     }
     return ret;
 }
@@ -435,26 +429,22 @@ static err_t _whm_http_server_rest_post_handler_config_recv(struct pbuf* p)
 
 static err_t _whm_http_server_rest_post_handler_config_finish(char* response_uri, uint16_t response_uri_len)
 {
-    printf("FINISH CONFIG POST\n");
     int len = _whm_http_server_config_pos - _whm_http_server_config_buffer;
     _whm_http_server_config_pos = _whm_http_server_config_buffer;
-    err_t ret = ERR_OK;
-    int a = whm_config_set_string(_whm_http_server_config_buffer, len);
-    int b = whm_config_save();
-    if (0 == a && 0 == b)
+    _whm_http_server_response_code = ERR_OK;
+    if (0 == whm_config_set_string(_whm_http_server_config_buffer, len) &&
+        0 == whm_config_save())
     {
         strncpy(_whm_http_server_response_buffer, "{\"status\":\"ok\"}", _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
     }
     else
     {
         strncpy(_whm_http_server_response_buffer, "{\"status\":\"error\",\"error\":\"config invalid\"}", _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
-        ret = ERR_ARG;
+        _whm_http_server_response_code = ERR_ARG;
     }
-    printf("a = %d\n", a);
-    printf("b = %d\n", b);
     _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
     strncpy(response_uri, "/api/config", response_uri_len);
-    return ret;
+    return _whm_http_server_response_code;
 }
 
 

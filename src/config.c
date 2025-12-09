@@ -65,7 +65,6 @@ bool whm_config_loaded(void)
 
 int whm_config_set_string(char* config_str, unsigned len)
 {
-    printf("CONF: (%u) \"%.*s\n\"", len, len, config_str);
     int ret = -1;
     if (len < _WHM_CONFIG_JSON_BUFFER_LEN)
     {
@@ -100,7 +99,7 @@ int whm_config_save(void)
     {
         return ret;
     }
-    printf("VALID CONFIG\n");
+    memcpy(&whm_conf, &test_conf, sizeof(whm_config_t));
     return _whm_config_save();
 }
 
@@ -179,7 +178,6 @@ static int _whm_config_save(void)
     int ret = _whm_config_commit2(PERSIST_RAW_DATA, (uint8_t*)_whm_config_json, _WHM_CONFIG_JSON_BUFFER_LEN);
     critical_section_exit(&crit_sec);
     critical_section_deinit(&crit_sec);
-    printf("WRITTEN WITH RET: %d\n", ret);
     return ret;
 }
 
@@ -206,12 +204,12 @@ static int _whm_config_load(whm_config_t* config)
         memcpy(config->name, namefield, len);
         config->name[len] = '\0';
     }
-    const char* blinking_ms_str = json_getPropertyValue(parent, "name");
+    const char* blinking_ms_str = json_getPropertyValue(parent, "blinking_ms");
     if (blinking_ms_str)
     {
         char* p = NULL;
         uint32_t blinking_ms = strtoul(blinking_ms_str, &p, 10);
-        if (*p == '\0')
+        if (*p != '\0')
         {
             printf("invalid blinking_ms\n");
         }
