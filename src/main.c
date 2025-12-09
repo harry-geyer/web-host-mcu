@@ -12,6 +12,8 @@
 #include "http_server.h"
 #include "htu31d.h"
 #include "ap_station.h"
+#include "config.h"
+#include "util.h"
 
 
 int main(int argc, char **argv)
@@ -30,6 +32,8 @@ int main(int argc, char **argv)
 
     printf("----start----\n");
     printf("Version : %s\n", FIRMWARE_SHA1);
+
+    whm_config_init();
 
     int ret = whm_ap_station_init();
     if (ret)
@@ -57,7 +61,7 @@ int main(int argc, char **argv)
     uint64_t loop_time = 0;
     while (!done)
     {
-        while (time_us_64() - loop_time < 250000)
+        while (time_us_64() - loop_time < WHM_MS_TO_US(whm_conf.blinking_ms))
         {
             tight_loop_contents();
             whm_ap_station_iterate();

@@ -5,3 +5,5 @@
 
 #define WHM_CEIL(_x, _y)                   ((_x + _y - 1) / _y)
 #define WHM_ABS32(_x)                        ((uint32_t)((_x) < 0 ? -(_x) : (_x)))
+
+#define WHM_MS_TO_US(_ms)                  (_ms * 1000U)

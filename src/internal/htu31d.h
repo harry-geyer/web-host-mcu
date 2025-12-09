@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#define WHM_HTU31D_MAX_CONV_TIME_US             13000U
+
 
 typedef void (* whm_htu31d_callback_t)(void* userdata, bool success, uint32_t rh_e3, int32_t t_e3);
 

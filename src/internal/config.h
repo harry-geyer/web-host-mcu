@@ -34,3 +34,4 @@ int whm_config_set_string(char* config_str, unsigned len);
 char* whm_config_get_string(void);
 void whm_config_wipe(void);
 int whm_config_save(void);
+int whm_config_restore(void);

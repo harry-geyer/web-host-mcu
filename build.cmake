@@ -33,6 +33,7 @@ add_executable(application
     ${CMAKE_CURRENT_LIST_DIR}/src/config.c
     ${CMAKE_CURRENT_LIST_DIR}/src/htu31d.c
     ${CMAKE_CURRENT_LIST_DIR}/src/ap_station.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/common.c
     ${CMAKE_CURRENT_LIST_DIR}/libs/tiny-json/tiny-json.c
 )
 
@@ -171,7 +172,7 @@ add_custom_target(cppcheck
 add_custom_target(openocd
     COMMAND
         ${BASH}
-        openocd -f interface/cmsis-dap.cfg -c "adapter speed 5000" -f target/rp2040.cfg -s tcl
+        openocd -s tcl -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000"
     COMMENT "Starting debug"
 )
 
@@ -179,7 +180,16 @@ add_custom_target(gdb
     COMMAND
         ${BASH}
         gdb-multiarch -ex "target extended-remote localhost:3333" application.elf
+    DEPENDS application
     COMMENT "Attaching"
+)
+
+add_custom_target(flash
+    COMMAND
+        ${BASH}
+        openocd -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "adapter speed 5000" -c "program application.elf verify reset exit"
+    DEPENDS application
+    COMMENT "Flashing"
 )
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
