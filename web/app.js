@@ -107,21 +107,18 @@ async function loadStatus() {
         const data = await res.json()
 
         if (data?.network?.connected) {
-            wifiConfig.style.display = 'none'
             connectionStatus.style.backgroundColor = 'green'
             connectionStatus.title = 'Wi-Fi connected'
-            setStatus('Network connected. Wi-Fi config hidden.')
+            setStatus('Network connected.')
         } else {
-            wifiConfig.style.display = 'block'
             connectionStatus.style.backgroundColor = 'orange'
             connectionStatus.title = 'Wi-Fi disconnected'
             //setStatus('Network not connected. Configure Wi-Fi.')
         }
     } catch (err) {
-        wifiConfig.style.display = 'block'
         connectionStatus.style.backgroundColor = 'red'
         connectionStatus.title = 'Device disconnected'
-        setStatus('Failed to fetch network status. Wi-Fi config visible.')
+        setStatus('Failed to fetch network status.')
     }
 }
 

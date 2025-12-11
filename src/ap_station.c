@@ -51,7 +51,18 @@ whm_ap_station_scan_result_t* whm_ap_station_scan_results = NULL;
 
 int whm_ap_station_init(void)
 {
-    return _whm_ap_station_reload();
+    int ret = _whm_ap_station_reload();
+    if (ret)
+    {
+        printf("Failed to initialise ap station\n");
+        return ret;
+    }
+    ret = whm_http_server_init(&_whm_ap_station_ctx.http_server);
+    if (ret)
+    {
+        printf("Failed to initialise tcp server\n");
+    }
+    return ret;
 }
 
 
@@ -304,6 +315,10 @@ static int _whm_ap_station_scan_result(void* userdata, const cyw43_ev_scan_resul
 
 static int _whm_ap_station_connect(void)
 {
+    if (!_whm_ap_station_ctx.is_station)
+    {
+        _whm_ap_station_set_mode(true);
+    }
     int ret = cyw43_arch_wifi_connect_async(whm_conf.station.ssid, whm_conf.station.password, whm_conf.station.auth);
     if (0 == ret)
     {
@@ -316,17 +331,13 @@ static int _whm_ap_station_connect(void)
 static int _whm_ap_station_set_mode(bool station)
 {
     int ret = 0;
+    _whm_ap_station_ctx.is_station = station;
     if (station)
     {
         cyw43_arch_disable_ap_mode();
         cyw43_arch_enable_sta_mode();
         _whm_ap_station_ctx.state = _WHM_AP_STATION_STATE_STATION;
         whm_dhcp_server_deinit(&_whm_ap_station_ctx.dhcp_server);
-        ret = whm_http_server_init(&_whm_ap_station_ctx.http_server);
-        if (0 != ret)
-        {
-            printf("Failed to initialise tcp server\n");
-        }
     }
     else
     {
@@ -337,14 +348,6 @@ static int _whm_ap_station_set_mode(bool station)
         if (0 != ret)
         {
             printf("Failed to initialise dhcp server\n");
-        }
-        else
-        {
-            ret = whm_http_server_init(&_whm_ap_station_ctx.http_server);
-            if (ret)
-            {
-                printf("Failed to initialise tcp server\n");
-            }
         }
     }
     return ret;
