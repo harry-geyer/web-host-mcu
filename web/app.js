@@ -72,9 +72,17 @@ async function saveConfig() {
     const config = {
         name: nameInput.value.trim() || 'Web-Host-MCU',
         blinking_ms: parseInt(blinkingSlider.value, 10) || 250,
-        wifi_ssid: ssidInput.value.trim() || '',
-        wifi_pass: passwordInput.value.trim() || ''
+        ap: {
+            ssid: 'Web-Host MCU',
+            password: 'host52%files'
+        },
+        station: {
+            ssid: ssidInput.value.trim() || '',
+            password: passwordInput.value.trim() || '',
+            auth: passwordInput.disabled ? 'OPEN' : 'WPA2_AES'
+        }
     }
+
     setStatus('Saving configuration...')
     saveBtn.disabled = true
     try {
