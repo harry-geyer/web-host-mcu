@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <inttypes.h>
 
 #include "hardware/i2c.h"
 #include "hardware/gpio.h"
@@ -18,8 +19,8 @@
 #define __WHM_HTU31D_I2C_ADDR(_v)                   (0x40U | _v)
 #define _WHM_HTU31D_I2C_ADDR                        __WHM_HTU31D_I2C_ADDR(_WHM_HTU31D_I2C_ADDR_GND)
 
-#define _WHM_HTU31D_I2C_WRITE_TIMEOUT_US(_bytes)    WHM_CEIL(1000U * 1000U * 11U * _bytes, _WHM_HTU31D_I2C_SCL_FREQ_HZ) /* 10 or 11 SCL cycles in one 8 bit write */
-#define _WHM_HTU31D_I2C_READ_TIMEOUT_US(_bytes)     WHM_CEIL(1000U * 1000U * 11U * _bytes, _WHM_HTU31D_I2C_SCL_FREQ_HZ) /* 10 or 11 SCL cycles in one 8 bit read */
+#define _WHM_HTU31D_I2C_WRITE_TIMEOUT_US(_bytes)   (2000U * (_bytes))
+#define _WHM_HTU31D_I2C_READ_TIMEOUT_US(_bytes)    (2000U * (_bytes))
 
 #define _WHM_HTU31D_RH_OSR_0_020_PERC               0x0U
 #define _WHM_HTU31D_RH_OSR_0_014_PERC               0x1U
@@ -41,6 +42,8 @@
 #define _WHM_HTU31D_T_OSR_0_016_C_CONV_TIME_US      6100U
 #define _WHM_HTU31D_T_OSR_0_012_C_CONV_TIME_US      12100U
 
+#define _WHM_HTU31D_CONV_TIME_STATIC                10000U
+
 #define _WHM_HTU31D_RH_OSR                          _WHM_HTU31D_RH_OSR_0_020_PERC
 #define _WHM_HTU31D_T_OSR                           _WHM_HTU31D_T_OSR_0_040_C
 
@@ -55,8 +58,8 @@
 
 
 static void _whm_htu31d_do_read(void);
-static bool _whm_htu31d_command(const uint8_t command);
-static bool _whm_htu31d_read(uint16_t* val, bool nostop);
+static bool _whm_htu31d_command(const uint8_t command, bool nostop);
+static bool _whm_htu31d_read_rh_t(uint16_t* rh, uint16_t* t, bool nostop);
 static uint8_t _whm_htu31d_crc8(uint8_t* data, uint8_t length);
 static uint32_t _whm_htu31d_conv_rel_hum(uint16_t raw);
 static int32_t _whm_htu31d_conv_temperature(uint16_t raw);
@@ -76,7 +79,7 @@ static const uint16_t _whm_htu31d_temperature_conv_time[] =
     _WHM_HTU31D_T_OSR_0_016_C_CONV_TIME_US,
     _WHM_HTU31D_T_OSR_0_012_C_CONV_TIME_US,
 };
-#define _WHM_HTU31D_GET_CONV_TIME(_rh, _t)          WHM_MAX(_whm_htu31d_rel_hum_conv_time[_rh], _whm_htu31d_temperature_conv_time[_rh])
+#define _WHM_HTU31D_GET_CONV_TIME(_rh, _t)          WHM_MAX(_whm_htu31d_rel_hum_conv_time[_rh], _whm_htu31d_temperature_conv_time[_t])
 
 static void* _whm_htu31d_callback = NULL;
 static void* _whm_htu31d_userdata = NULL;
@@ -88,6 +91,10 @@ static uint64_t _whm_htu31d_conversion_time = 0;
 void whm_htu31d_init(void)
 {
     i2c_init(I2C_INSTANCE(WHM_HTU31D_I2C_UNIT), _WHM_HTU31D_I2C_SCL_FREQ_HZ);
+    gpio_init(WHM_HTU31D_SDA_PIN);
+    gpio_init(WHM_HTU31D_SCL_PIN);
+    gpio_set_drive_strength(WHM_HTU31D_SDA_PIN, GPIO_DRIVE_STRENGTH_12MA);
+    gpio_set_drive_strength(WHM_HTU31D_SCL_PIN, GPIO_DRIVE_STRENGTH_12MA);
     gpio_set_function(WHM_HTU31D_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(WHM_HTU31D_SCL_PIN, GPIO_FUNC_I2C);
     gpio_pull_up(WHM_HTU31D_SDA_PIN);
@@ -128,14 +135,14 @@ bool whm_htu31d_get(void* userdata, whm_htu31d_callback_t callback)
         return false;
     }
     uint8_t conv_command = _WHM_HTU31D_CMD_CONVERSION(_WHM_HTU31D_RH_OSR, _WHM_HTU31D_T_OSR);
-    if (!_whm_htu31d_command(conv_command))
+    if (!_whm_htu31d_command(conv_command, false))
     {
         /* failed to execute conversion command */
         return false;
     }
     _whm_htu31d_collecting = true;
     _whm_htu31d_conversion_time = time_us_64()
-        + _WHM_HTU31D_GET_CONV_TIME(_WHM_HTU31D_RH_OSR, _WHM_HTU31D_T_OSR);
+        + _WHM_HTU31D_GET_CONV_TIME(_WHM_HTU31D_RH_OSR, _WHM_HTU31D_T_OSR) + _WHM_HTU31D_CONV_TIME_STATIC;
     _whm_htu31d_userdata = userdata;
     _whm_htu31d_callback = (void*)callback;
     return true;
@@ -146,9 +153,8 @@ static void _whm_htu31d_do_read(void)
 {
     uint16_t rh_raw = 0;
     uint16_t t_raw = 0;
-    bool success = _whm_htu31d_command(_WHM_HTU31D_CMD_READ_T_RH)
-        && _whm_htu31d_read(&rh_raw, true)
-        && _whm_htu31d_read(&t_raw, false);
+    bool success = _whm_htu31d_command(_WHM_HTU31D_CMD_READ_T_RH, true)
+        && _whm_htu31d_read_rh_t(&rh_raw, &t_raw, false);
     if (_whm_htu31d_callback)
     {
         uint32_t rh_e3 = _whm_htu31d_conv_rel_hum(rh_raw);
@@ -158,69 +164,97 @@ static void _whm_htu31d_do_read(void)
 }
 
 
-static bool _whm_htu31d_command(const uint8_t command)
+static bool _whm_htu31d_command(const uint8_t command, bool nostop)
 {
     int ret = i2c_write_timeout_us(
         I2C_INSTANCE(WHM_HTU31D_I2C_UNIT),
         _WHM_HTU31D_I2C_ADDR,
         &command,
         1U,
-        false,
+        nostop,
         _WHM_HTU31D_I2C_WRITE_TIMEOUT_US(1U)
     );
     return ret == 1;
 }
 
 
-static bool _whm_htu31d_read(uint16_t* val, bool nostop)
+static bool _whm_htu31d_read_rh_t(uint16_t* rh, uint16_t* t, bool nostop)
 {
-    if (!val)
+    if (!rh || !t)
     {
         /* null pointer */
         return false;
     }
-    uint8_t buf[3];
+    uint8_t buf[6];
+
     int ret = i2c_read_timeout_us(
         I2C_INSTANCE(WHM_HTU31D_I2C_UNIT),
         _WHM_HTU31D_I2C_ADDR,
         buf,
-        3U,
+        6U,
         nostop,
-        _WHM_HTU31D_I2C_READ_TIMEOUT_US(3U)
+        _WHM_HTU31D_I2C_READ_TIMEOUT_US(6U)
     );
-    if (ret != 1)
+    if (ret != 6)
     {
         /* failed reading i2c */
         return false;
     }
-    uint8_t crc8 = _whm_htu31d_crc8(buf, 2);
-    if (crc8 != buf[2])
+    uint8_t t_crc8 = _whm_htu31d_crc8(buf, 2);
+    if (t_crc8 != buf[2])
     {
         /* bad CRC8 */
         return false;
     }
-    *val = (buf[1] << 8) | buf[0];
+    *t = (buf[0] << 8) | buf[1];
+    uint8_t rh_crc8 = _whm_htu31d_crc8(buf + 3, 2);
+    if (rh_crc8 != buf[5])
+    {
+        /* bad CRC8 */
+        return false;
+    }
+    *rh = (buf[3] << 8) | buf[4];
     return true;
 }
 
 
-static uint8_t _whm_htu31d_crc8(uint8_t* data, uint8_t length)
+static uint8_t _whm_htu31d_crc8(uint8_t *data, uint8_t length)
 {
-    uint8_t crc = 0;
-    for (uint8_t i = 0; i < length; i++)
+    uint32_t polynom = 0x98800000UL;
+    uint32_t msb     = 0x80000000UL;
+    uint32_t mask    = 0xFF800000UL;
+    uint32_t result  = 0;
+
+    if (length == 1)
     {
-        crc ^= data[i];
-        for (uint8_t j = 0; j < 8; j++)
-        {
-            if (crc & 0x01)
-            {
-                crc ^= 0x8C;
-            }
-            crc >>= 1;
-        }
+        result = (uint32_t)data[0] << 8;
     }
-    return crc;
+    else if (length == 2)
+    {
+        result = ((uint32_t)data[0] << 16) | ((uint32_t)data[1] << 8);
+    }
+    else if (length == 3)
+    {
+        result = ((uint32_t)data[0] << 24) | ((uint32_t)data[1] << 16) | ((uint32_t)data[2] << 8);
+    }
+    else
+    {
+        return 0xFF;
+    }
+    while (msb != 0x80)
+    {
+        if (result & msb)
+        {
+            result = ((result ^ polynom) & mask) | (result & ~mask);
+        }
+        msb >>= 1;
+        mask >>= 1;
+        polynom >>= 1;
+    }
+
+    return (uint8_t)(result & 0xFF);
 }
+
 
 
 static uint32_t _whm_htu31d_conv_rel_hum(uint16_t raw)

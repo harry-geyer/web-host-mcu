@@ -15,6 +15,16 @@ const ssidDropdown = document.getElementById('ssidDropdown')
 const ssidLoader = document.getElementById('ssidLoader')
 
 
+const measurementNames = {
+    'relative_humidity': 'Relative Humidity',
+    'temperature': 'Temperature',
+}
+
+const unitNames = {
+    'celsius': 'ºC',
+}
+
+
 let lastStations = []
 
 
@@ -112,16 +122,40 @@ function renderMeasurements(list) {
         measurementsContainer.textContent = 'No measurements available.'
         return
     }
-    measurementsContainer.innerHTML = list.map(item => {
-        const name = item.name ?? 'Unknown'
-        const value = item.value ?? 'N/A'
-        const unit = item.unit ?? ''
-        return `<div class="measurement-item">
-                            <span class="measurement-name">${name}</span>
-                            <span class="measurement-value">${value} ${unit}</span>
-                        </div>`
-    }).join('')
+
+    measurementsContainer.innerHTML = ''
+
+    list.forEach(item => {
+        const rawName = item.name ?? 'Unknown'
+        const rawUnit = item.unit ?? ''
+
+        const displayName = measurementNames.hasOwnProperty(rawName)
+            ? measurementNames[rawName]
+            : rawName
+
+        const displayUnit = unitNames.hasOwnProperty(rawUnit)
+            ? unitNames[rawUnit]
+            : rawUnit
+
+        const value = (item.value === 0 || item.value) ? item.value : 'N/A'
+
+        const div = document.createElement('div')
+        div.className = 'measurement-item'
+
+        const nameSpan = document.createElement('span')
+        nameSpan.className = 'measurement-name'
+        nameSpan.textContent = displayName
+
+        const valueSpan = document.createElement('span')
+        valueSpan.className = 'measurement-value'
+        valueSpan.textContent = `${value}${displayUnit ? ' ' + displayUnit : ''}`
+
+        div.appendChild(nameSpan)
+        div.appendChild(valueSpan)
+        measurementsContainer.appendChild(div)
+    })
 }
+
 
 async function fetchMeasurements() {
     try {
