@@ -72,9 +72,17 @@ async function saveConfig() {
     const config = {
         name: nameInput.value.trim() || 'Web-Host-MCU',
         blinking_ms: parseInt(blinkingSlider.value, 10) || 250,
-        wifi_ssid: ssidInput.value.trim() || '',
-        wifi_pass: passwordInput.value.trim() || ''
+        ap: {
+            ssid: 'Web-Host MCU',
+            password: 'host52%files'
+        },
+        station: {
+            ssid: ssidInput.value.trim() || '',
+            password: passwordInput.value.trim() || '',
+            auth: passwordInput.disabled ? 'OPEN' : 'WPA2_AES'
+        }
     }
+
     setStatus('Saving configuration...')
     saveBtn.disabled = true
     try {
@@ -99,21 +107,18 @@ async function loadStatus() {
         const data = await res.json()
 
         if (data?.network?.connected) {
-            wifiConfig.style.display = 'none'
             connectionStatus.style.backgroundColor = 'green'
             connectionStatus.title = 'Wi-Fi connected'
-            setStatus('Network connected. Wi-Fi config hidden.')
+            setStatus('Network connected.')
         } else {
-            wifiConfig.style.display = 'block'
             connectionStatus.style.backgroundColor = 'orange'
             connectionStatus.title = 'Wi-Fi disconnected'
             //setStatus('Network not connected. Configure Wi-Fi.')
         }
     } catch (err) {
-        wifiConfig.style.display = 'block'
         connectionStatus.style.backgroundColor = 'red'
         connectionStatus.title = 'Device disconnected'
-        setStatus('Failed to fetch network status. Wi-Fi config visible.')
+        setStatus('Failed to fetch network status.')
     }
 }
 

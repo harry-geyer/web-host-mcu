@@ -338,8 +338,9 @@ static err_t _whm_http_server_rest_get_handler_status(struct fs_file *file, cons
     unsigned len = snprintf(
         _whm_http_server_response_buffer,
         _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE,
-        "{\"network\":{\"connected\":%s}}",
-        is_connected ? "true" : "false"
+        "{\"network\":{\"connected\":%s,\"state\":\"%s\"}}",
+        is_connected ? "true" : "false",
+        whm_ap_station_get_state()
     );
     file->data = _whm_http_server_response_buffer;
     file->len = len;
