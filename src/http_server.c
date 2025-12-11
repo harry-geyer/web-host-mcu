@@ -378,30 +378,51 @@ static err_t _whm_http_server_rest_get_handler_wifi_scan_get(struct fs_file *fil
             "{\"status\":\"error\"}",
             _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE
         );
-        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE - 1);
         ret = ERR_INPROGRESS;
     }
     else
     {
         strncpy(_whm_http_server_response_buffer, "{\"status\":\"ok\",\"stations\":[", _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE);
-        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE - 1);
         char* p = &_whm_http_server_response_buffer[len];
+        size_t buf_remain = _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE - len;
         whm_ap_station_scan_result_t* c = results;
+        bool first = true;
         while (c)
         {
             const cyw43_ev_scan_result_t* r = &c->result;
             char mac_address[18];
-            _whm_http_server_gen_mac(mac_address, 18, r->bssid, sizeof(r->bssid));
+            _whm_http_server_gen_mac(mac_address, sizeof(mac_address), r->bssid, sizeof(r->bssid));
             const char* auth = _whm_http_server_gen_auth(r->auth_mode);
-            len += snprintf(p, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE - len,
-                "{\"ssid\":\"%.*s\",\"mac\":\"%s\",\"channel\":%"PRIu16",\"auth\":\"%s\",\"rssi\":%"PRId16"},",
+            const char* prefix = first ? "" : ",";
+            int written = snprintf(
+                p, buf_remain,
+                "%s{\"ssid\":\"%.*s\",\"mac\":\"%s\",\"channel\":%"PRIu16",\"auth\":\"%s\",\"rssi\":%"PRId16"}",
+                prefix,
                 r->ssid_len, r->ssid, mac_address, r->channel, auth, r->rssi
             );
+            if (written < 0 || (size_t)written >= buf_remain)
+            {
+                break;
+            }
+            p += written;
+            len += written;
+            buf_remain -= written;
+            first = false;
+            c = c->next;
         }
-        _whm_http_server_response_buffer[len-1] = ']';
-        _whm_http_server_response_buffer[len] = '}';
+        if (buf_remain >= 3)
+        {
+            int written = snprintf(p, buf_remain, "]}");
+            if (written > 0)
+            {
+                len += written;
+            }
+        }
         whm_ap_station_scan_results_free();
     }
+
     file->data = _whm_http_server_response_buffer;
     file->len = len;
     file->index = file->len;

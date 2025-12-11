@@ -141,7 +141,7 @@ bool whm_ap_station_start_scan(void)
         whm_ap_station_scan_results_free();
     }
     cyw43_wifi_scan_options_t scan_options = {0};
-    if (0 == cyw43_wifi_scan(&cyw43_state, &scan_options, (void*)whm_ap_station_scan_results, _whm_ap_station_scan_result))
+    if (0 == cyw43_wifi_scan(&cyw43_state, &scan_options, NULL, _whm_ap_station_scan_result))
     {
         ret = true;
         _whm_ap_station_ctx.state = _WHM_AP_STATION_STATE_SCAN;
@@ -196,31 +196,27 @@ static int _whm_ap_station_reload(void)
 
 static int _whm_ap_station_scan_result(void* userdata, const cyw43_ev_scan_result_t* result)
 {
-    whm_ap_station_scan_result_t* results = (whm_ap_station_scan_result_t*)userdata;
-    if (NULL == result)
-    {
+    (void)userdata;
+    if (!result)
         return 0;
-    }
-    whm_ap_station_scan_result_t* new_node = (whm_ap_station_scan_result_t*)malloc(sizeof(whm_ap_station_scan_result_t));
-    if (NULL == new_node)
-    {
-        return -1;
-    }
-    (void)memcpy((void*)&new_node->result, (const void*)result, sizeof(cyw43_ev_scan_result_t));
+
+    whm_ap_station_scan_result_t* new_node = malloc(sizeof(*new_node));
+    if (!new_node) return -1;
+
+    memcpy((void*)&new_node->result, result, sizeof(cyw43_ev_scan_result_t));
     new_node->next = NULL;
-    if (NULL == results)
+
+    if (!whm_ap_station_scan_results)
     {
-        results = new_node;
+        whm_ap_station_scan_results = new_node;
     }
     else
     {
-        whm_ap_station_scan_result_t* res = results;
-        while (NULL != res->next)
-        {
-            res = res->next;
-        }
-        res->next = new_node;
+        whm_ap_station_scan_result_t* cur = whm_ap_station_scan_results;
+        while (cur->next) cur = cur->next;
+        cur->next = new_node;
     }
+
     return 0;
 }
 
