@@ -272,48 +272,63 @@ static int _whm_http_server_meas_get_htu31d(void* userdata)
 }
 
 
+static int _whm_http_server_measurement_err(void)
+{
+    strncpy(
+        _whm_http_server_response_buffer,
+        "{\"error\":\"failed to get measurements\"}",
+        _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1
+    );
+    _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
+    return strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+}
+
+
 static err_t _whm_http_server_rest_get_handler_meas(struct fs_file *file, const char* name)
 {
-    whm_htu31d_get(NULL, _whm_http_server_meas_finish);
-    whm_main_loop_iterate(NULL, _whm_http_server_meas_get_htu31d, WHM_HTU31D_MAX_CONV_TIME_US);
-    _whm_http_server_meas.done = false;
+    int ret = ERR_OK;
     int len = 0;
-    if (_whm_http_server_meas.success)
+    if (!whm_htu31d_get(NULL, _whm_http_server_meas_finish))
     {
-        len = snprintf(
-            _whm_http_server_response_buffer,
-            _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1,
-            "["
-                "{"
-                    "\"name\":\"relative_humidity\","
-                    "\"value\":%"PRIu32".%03"PRIu32","
-                    "\"unit\":\"%%\""
-                "},{"
-                    "\"name\":\"temperature\","
-                    "\"value\"%"PRId32".%03"PRIu32","
-                    "\"unit\":\"celcius\""
-                "}"
-            "]",
-            _whm_http_server_meas.rel_hum / 1000U, _whm_http_server_meas.rel_hum % 1000U,
-            _whm_http_server_meas.temperature / 1000, WHM_ABS32(_whm_http_server_meas.temperature) % 1000U
-        );
-        _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
+        ret = ERR_INPROGRESS;
+        len = _whm_http_server_measurement_err();
     }
     else
     {
-        strncpy(
-            _whm_http_server_response_buffer,
-            "{\"error\":\"failed to get measurements\"}",
-            _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1
-        );
-        _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
-        len = strnlen(_whm_http_server_response_buffer, _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1);
+        whm_main_loop_iterate(NULL, _whm_http_server_meas_get_htu31d, WHM_HTU31D_MAX_CONV_TIME_US);
+        _whm_http_server_meas.done = false;
+        if (_whm_http_server_meas.success)
+        {
+            len = snprintf(
+                _whm_http_server_response_buffer,
+                _WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1,
+                "["
+                    "{"
+                        "\"name\":\"relative_humidity\","
+                        "\"value\":%"PRIu32".%03"PRIu32","
+                        "\"unit\":\"%%\""
+                    "},{"
+                        "\"name\":\"temperature\","
+                        "\"value\":%"PRId32".%03"PRIu32","
+                        "\"unit\":\"ºC\""
+                    "}"
+                "]",
+                _whm_http_server_meas.rel_hum / 1000U, _whm_http_server_meas.rel_hum % 1000U,
+                _whm_http_server_meas.temperature / 1000, WHM_ABS32(_whm_http_server_meas.temperature) % 1000U
+            );
+            _whm_http_server_response_buffer[_WHM_HTTP_SERVER_RESPONSE_BUFFER_SIZE-1] = '\0';
+        }
+        else
+        {
+            len = _whm_http_server_measurement_err();
+            ret = ERR_TIMEOUT;
+        }
     }
     file->data = _whm_http_server_response_buffer;
     file->len = len;
     file->index = file->len;
     file->flags = FS_FILE_FLAGS_HEADER_PERSISTENT;
-    return ERR_OK;
+    return ret;
 }
 
 
